@@ -20,6 +20,7 @@ article {
 }
 article p { margin: 0.2rem 0 0; }
 a { font-weight: 600; }
+footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
 .score {
   flex: none;
   width: 2rem;

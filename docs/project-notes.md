@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 7.
+found so far. Last updated 2026-11-23, after chunk 8.
 
 ## What we are building
 
@@ -243,6 +243,22 @@ The page has a row of filter buttons, one per topic, with item counts.
   up as a new button with no code change.
 - **Filtering is in the browser**, over the feed already loaded. The choice
   is not saved; a page reload shows everything again.
+
+## Chunk 8: pagination
+
+The page shows 20 items at a time, with Previous and Next buttons and a
+"Page 2 of 5" label. The buttons appear only when there is more than one page.
+
+| File | Purpose |
+|---|---|
+| `src/core/paginate.ts` | `paginate(all, page, pageSize)` returns one page of a list and the page count |
+| `tests/paginate.test.ts` | Four tests: a middle page, a short last page, out-of-range page numbers, an empty list |
+
+- **Paging is in the browser**, like the topic filter, over the feed already
+  loaded. The endpoint still returns the whole feed.
+- **Paging applies after the filter.** Picking a topic goes back to page 1,
+  and the page count is for that topic's items.
+- **The page number is not saved**; a page reload starts at page 1.
 
 ## Environment findings
 

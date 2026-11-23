@@ -2,7 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { paginate } from "#/core/paginate.ts";
 import type { Feed } from "#/store.ts";
+
+const PAGE_SIZE = 20;
 
 /** Reads the stored feed. The page never starts a run. */
 async function fetchFeed(): Promise<Feed> {
@@ -18,6 +21,7 @@ export default function Page() {
     queryFn: fetchFeed,
   });
   const [topic, setTopic] = useState<string>();
+  const [pageNumber, setPageNumber] = useState(1);
   const lastRun = data?.lastRun;
   const items = data?.items ?? [];
 
@@ -26,7 +30,13 @@ export default function Page() {
   for (const item of items) counts.set(item.topic, (counts.get(item.topic) ?? 0) + 1);
   // A topic picked earlier may be gone after a reload; fall back to everything.
   const active = topic !== undefined && counts.has(topic) ? topic : undefined;
-  const shown = active ? items.filter((item) => item.topic === active) : items;
+  const matching = active ? items.filter((item) => item.topic === active) : items;
+  const { items: shown, page, pageCount } = paginate(matching, pageNumber, PAGE_SIZE);
+  // Changing the filter starts again from the first page.
+  const pickTopic = (name?: string) => {
+    setTopic(name);
+    setPageNumber(1);
+  };
 
   return (
     <main>
@@ -63,11 +73,11 @@ export default function Page() {
 
       {counts.size > 1 && (
         <nav>
-          <button aria-pressed={!active} onClick={() => setTopic(undefined)}>
+          <button aria-pressed={!active} onClick={() => pickTopic(undefined)}>
             All ({items.length})
           </button>
           {[...counts].map(([name, count]) => (
-            <button key={name} aria-pressed={active === name} onClick={() => setTopic(name)}>
+            <button key={name} aria-pressed={active === name} onClick={() => pickTopic(name)}>
               {name} ({count})
             </button>
           ))}
@@ -88,6 +98,20 @@ export default function Page() {
           </div>
         </article>
       ))}
+
+      {pageCount > 1 && (
+        <footer>
+          <button onClick={() => setPageNumber(page - 1)} disabled={page === 1}>
+            Previous
+          </button>
+          <span className="muted">
+            Page {page} of {pageCount}
+          </span>
+          <button onClick={() => setPageNumber(page + 1)} disabled={page === pageCount}>
+            Next
+          </button>
+        </footer>
+      )}
     </main>
   );
 }
