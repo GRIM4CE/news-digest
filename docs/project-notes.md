@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 1.
+found so far. Last updated 2026-11-23, after chunk 2.
 
 ## What we are building
 
@@ -46,6 +46,7 @@ developments, company and market news, local news.
   `allowImportingTsExtensions` and `erasableSyntaxOnly`.
 - `zod` for schemas and types, `vitest` for tests, `eslint` with
   `typescript-eslint` for lint.
+- `feedsmith` parses feeds (RSS, Atom, RDF, JSON Feed).
 - `@anthropic-ai/sdk` is approved but not installed yet; it arrives with the
   first model call.
 - Any other new dependency needs a yes first.
@@ -54,7 +55,7 @@ Commands:
 
 | Command | What it does |
 |---|---|
-| `npm run digest` | Run the flow on the sample input and print the digest |
+| `npm run digest` | Run the flow and print the digest. Uses the feeds in `feeds.json` when that file exists, otherwise the sample input |
 | `npm run check` | Typecheck, lint, and tests |
 | `npm run typecheck` / `lint` / `test` | Each check on its own |
 
@@ -109,6 +110,26 @@ Decisions made in chunk 1:
   model-written version can be added as its own chunk.
 - **Package renamed** to `news-digest`. The folder is still `reader-digest`.
 
+## Chunk 2: RSS fetch
+
+| File | Purpose |
+|---|---|
+| `src/sources/rss.ts` | `fetchArticles(feedUrls)` fetches and parses feeds into `Article[]`, and lists the feeds that failed instead of stopping. `parseArticles` and `htmlToText` are the pure parts |
+| `tests/rss.test.ts` | Four tests against inline feeds and a stub `fetch`; no network |
+| `feeds.example.json` | Template feed list. The real list goes in `feeds.json`, which is gitignored |
+
+Decisions made in chunk 2:
+
+- **Fetching sits outside the flows.** It is a shared step that runs before
+  any flow, and its output is the `articles` in `FlowInput`, so all three
+  flows are compared on the same input. The agent flows can wrap the same
+  function as a tool later if they should fetch on their own.
+- **`feedsmith` instead of `rss-parser`**, which has had no release since
+  April 2023.
+- **Article text is the feed's own snippet for now**, with HTML stripped.
+  Fetching each article URL for the full text is its own chunk.
+- **A failed feed is reported and skipped**; the rest still run.
+
 ## Environment findings
 
 Claude runs commands in a sandbox, which shapes a few things:
@@ -123,10 +144,14 @@ Claude runs commands in a sandbox, which shapes a few things:
   why the project uses Node's built-in TypeScript support instead.
 - **Network is filtered.** `registry.npmjs.org` works; other hosts (feeds,
   `api.anthropic.com`) are tried when first needed.
+- **Node's `fetch` ignores the sandbox proxy by default.** Inside the sandbox
+  a live fetch needs `NODE_USE_ENV_PROXY=1` and the host allowed for that
+  command. Outside the sandbox nothing extra is needed.
 
 ## Open items
 
-- Chunk 2 is the RSS fetch step. It needs a yes on an RSS parser dependency
-  (`rss-parser` proposed) and a few real feed URLs.
+- Next in the fetch step: full article text from each URL, then dedupe of
+  seen URLs in SQLite.
+- The real feed list (`feeds.json`) is still to be written.
 - `.env` loading gets wired into the CLI in the chunk that makes the first
   model call.
