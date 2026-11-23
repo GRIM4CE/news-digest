@@ -1,0 +1,25 @@
+{
+  "name": "news-digest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A personal reading digest built three ways: LLM workflow, single agent, multi-agent.",
+  "scripts": {
+    "digest": "node src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm run test"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.15.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.73.0",
+    "vitest": "^5.1.1"
+  }
+}
