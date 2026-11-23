@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 2.
+found so far. Last updated 2026-11-23, after chunk 3.
 
 ## What we are building
 
@@ -34,8 +34,8 @@ developments, company and market news, local news.
   reversible calls itself and notes them, and asks before anything hard to
   undo or that changes scope, dependencies, or public interfaces.
 - Every chunk ends with `npm run check` (typecheck, lint, tests) passing.
-- One commit per chunk, on a feature branch that is reviewed before it is
-  merged into `main`. Format: `type: short description`, imperative,
+- One commit per chunk, on a feature branch that is pushed and opened as a
+  pull request, then reviewed before it is merged into `main`. Format: `type: short description`, imperative,
   lowercase, under 50 characters, no AI attribution.
 - Chat replies stay on the one thing I raised.
 
@@ -59,6 +59,7 @@ Commands:
 | `npm run digest` | Run the flow and print the digest. Uses the feeds in `feeds.json` when that file exists, otherwise the sample input |
 | `npm run check` | Typecheck, lint, and tests |
 | `npm run typecheck` / `lint` / `test` | Each check on its own |
+| `npm run leakscan` | Scan staged files for secrets and personal details. `-- --all` scans every tracked file |
 
 ## Planned workflow (flow 1)
 
@@ -130,6 +131,34 @@ Decisions made in chunk 2:
 - **Article text is the feed's own snippet for now**, with HTML stripped.
   Fetching each article URL for the full text is its own chunk.
 - **A failed feed is reported and skipped**; the rest still run.
+
+## Chunk 3: leak guards
+
+The repo is public, so secrets and personal details are stopped in layers.
+
+| Layer | What it does |
+|---|---|
+| `tools/leakscan/` | Scanner with no dependencies. Flags email addresses, home-folder paths, API tokens, private keys, SSNs, data and key file types, files over 500 kB, and any word listed in `.private-terms`. Reports file, line, and rule, never the matched text |
+| `.private-terms` | Gitignored list of private words (names, usernames, places), one per line. CI reads the same list from the `LEAKSCAN_TERMS` repository secret |
+| `.githooks/pre-commit` | Runs the scanner on staged files. Enabled per clone with `git config core.hooksPath .githooks` |
+| `.gitignore` | Keeps data, log, and key files from being staged |
+| `.github/workflows/check.yml` | Runs `npm run check` and the scanner over every tracked file on pull requests and on pushes to `main`, because a local hook can be skipped |
+
+Decisions made in chunk 3:
+
+- **A small scanner instead of gitleaks.** The main risk here is personal
+  details, which need a private word list that generic secret scanners do not
+  have. Broad secret detection is left to the git host's push protection.
+- **Findings never print the matched text**, so CI logs on a public repo do
+  not repeat the leak or reveal the private word list.
+
+Set up outside the repo (host and editor settings):
+
+- Secret scanning and push protection on the git host.
+- Branch protection on `main`: changes arrive by pull request with the
+  `check` job passing.
+- `LEAKSCAN_TERMS` repository secret.
+- Optional agent hook that runs the scanner on each file the agent writes.
 
 ## Environment findings
 

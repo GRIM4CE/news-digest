@@ -1,0 +1,4 @@
+#!/bin/sh
+# Blocks commits that contain secrets or personal details.
+# Enable once per clone: git config core.hooksPath .githooks
+exec node tools/leakscan/cli.ts
