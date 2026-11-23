@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 12.
+found so far. Last updated 2026-11-23, after chunk 13.
 
 ## What we are building
 
@@ -374,6 +374,18 @@ Decisions made in chunk 12:
 - **No grouping without an API key.**
 - **Grouping is within one run.** A follow-up in a later run is a new item.
 
+## Chunk 13: tags within a topic
+
+An interest can list tags, finer labels such as a policy area or a level of
+government, and each item carries the ones that apply.
+
+- **Tags come from the same score call**, so they cost nothing extra.
+- **The model can only pick from the lists in `interests.json`**, and code
+  keeps only the tags that belong to the topic it chose.
+- **Tags are optional** on both the interest and the item. An item with none
+  simply has no `tags` field.
+- **The web view does not filter by tag yet**; that is a separate UI change.
+
 ## Environment findings
 
 Claude runs commands in a sandbox, which shapes a few things:
@@ -397,7 +409,7 @@ Claude runs commands in a sandbox, which shapes a few things:
 - The stored feed is never pruned.
 - Next in the fetch step: full article text from each URL.
 - The real feed list (`feeds.json`) is still to be written.
-- Next: tags within a topic, then summarize with the model, then show the
-  rating and the related links on the page.
+- Next: summarize with the model, then show the rating, the related links
+  and a tag filter on the page.
 - Group new articles against stories already in the stored feed.
 - `data/seen.json` is never pruned.

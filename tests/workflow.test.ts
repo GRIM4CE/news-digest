@@ -51,7 +51,7 @@ describe("workflow (keyword scoring)", () => {
 
 describe("scoreArticle", () => {
   it("scores an article as the lower of relevance and substance", async () => {
-    const reply = { reason: "On topic, thin.", relevance: 9, substance: 3, topic: "space" };
+    const reply = { reason: "On topic, thin.", relevance: 9, substance: 3, topic: "space", tags: [] };
     const result = await scoreArticle(
       article,
       sampleInterests,
@@ -69,7 +69,7 @@ describe("scoreArticle", () => {
   });
 
   it("keeps ratings inside 1 to 10", async () => {
-    const reply = { reason: "r", relevance: 14, substance: 0, topic: "other" };
+    const reply = { reason: "r", relevance: 14, substance: 0, topic: "other", tags: [] };
     const result = await scoreArticle(
       article,
       sampleInterests,
@@ -86,6 +86,42 @@ describe("scoreArticle", () => {
     }) as unknown as typeof callModel;
     await scoreArticle(article, sampleInterests, call);
     expect(topics).toEqual(["typescript", "space", "other"]);
+  });
+});
+
+describe("scoreArticle tags", () => {
+  const interests = [
+    { topic: "space", description: "Spaceflight.", tags: ["launch", "science"] },
+    { topic: "typescript", description: "TypeScript.", tags: ["release"] },
+  ];
+  const reply = (tags: string[]) =>
+    fakeCall({
+      ok: true,
+      data: { reason: "r", relevance: 8, substance: 8, topic: "space", tags },
+    });
+
+  it("keeps only tags that belong to the chosen topic", async () => {
+    const result = await scoreArticle(article, interests, reply(["release", "science"]));
+    expect(result.ok && result.data.tags).toEqual(["science"]);
+  });
+
+  it("leaves tags off when none apply", async () => {
+    const result = await scoreArticle(article, interests, reply([]));
+    expect(result.ok && "tags" in result.data).toBe(false);
+  });
+
+  it("offers the model every interest's tags and no others", async () => {
+    let options: unknown;
+    const call = (async ({
+      schema,
+    }: {
+      schema: { shape: { tags: { element: { options: unknown } } } };
+    }) => {
+      options = schema.shape.tags.element.options;
+      return { ok: false, reason: "unused" };
+    }) as unknown as typeof callModel;
+    await scoreArticle(article, interests, call);
+    expect(options).toEqual(["launch", "science", "release"]);
   });
 });
 

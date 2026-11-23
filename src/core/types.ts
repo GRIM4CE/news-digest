@@ -13,6 +13,8 @@ export type Article = z.infer<typeof ArticleSchema>;
 export const InterestSchema = z.object({
   topic: z.string().min(1),
   description: z.string().min(1),
+  /** Finer labels an article in this topic may carry, e.g. a policy area. */
+  tags: z.array(z.string().min(1)).optional(),
 });
 export type Interest = z.infer<typeof InterestSchema>;
 
@@ -37,6 +39,8 @@ export const DigestItemSchema = z.object({
   summary: z.string(),
   /** Missing on items scored without the model, and on older stored items. */
   rating: RatingSchema.optional(),
+  /** Labels from the topic's own tag list, for filtering within the topic. */
+  tags: z.array(z.string()).optional(),
   /** Other articles about the same story, collapsed into this item. */
   related: z
     .array(z.object({ title: z.string(), url: z.url(), source: z.string() }))

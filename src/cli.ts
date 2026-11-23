@@ -12,7 +12,8 @@ console.log(`Digest (${digest.flow})\n`);
 for (const { topic, items } of digest.sections) {
   console.log(`## ${topic}`);
   for (const item of items) {
-    console.log(`- [${item.score}] ${item.title} (${item.source})`);
+    const tags = item.tags ? ` [${item.tags.join(", ")}]` : "";
+    console.log(`- [${item.score}] ${item.title} (${item.source})${tags}`);
     console.log(`  ${item.summary}`);
     if (item.rating) {
       const { relevance, substance, reason } = item.rating;
