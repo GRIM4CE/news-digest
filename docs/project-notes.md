@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 3.
+found so far. Last updated 2026-11-23, after chunk 4.
 
 ## What we are building
 
@@ -48,6 +48,8 @@ developments, company and market news, local news.
 - `zod` for schemas and types, `vitest` for tests, `eslint` with
   `typescript-eslint` for lint.
 - `feedsmith` parses feeds (RSS, Atom, RDF, JSON Feed).
+- `next` and `react` render the web view; `@tanstack/react-query` caches the
+  digest in the browser.
 - `@anthropic-ai/sdk` is approved but not installed yet; it arrives with the
   first model call.
 - Any other new dependency needs a yes first.
@@ -56,6 +58,8 @@ Commands:
 
 | Command | What it does |
 |---|---|
+| `npm run dev` | Start the web view at `http://localhost:3000` |
+| `npm run build` | Production build of the web view |
 | `npm run digest` | Run the flow and print the digest. Uses the feeds in `feeds.json` when that file exists, otherwise the sample input |
 | `npm run check` | Typecheck, lint, and tests |
 | `npm run typecheck` / `lint` / `test` | Each check on its own |
@@ -159,6 +163,27 @@ Set up outside the repo (host and editor settings):
   `check` job passing.
 - `LEAKSCAN_TERMS` repository secret.
 - Optional agent hook that runs the scanner on each file the agent writes.
+
+## Chunk 4: web view
+
+A localhost page that shows the digest, so output can be read in a browser
+instead of the terminal.
+
+| File | Purpose |
+|---|---|
+| `src/digest.ts` | `buildDigest()` loads the articles and runs the flow. Shared by the CLI and the web view |
+| `src/app/api/digest/route.ts` | `GET /api/digest` runs `buildDigest()` and returns the result as JSON |
+| `src/app/page.tsx` | The page: sections by topic, score, summary, link, skipped feeds, and a Refresh button |
+| `src/app/providers.tsx` | TanStack Query client. A digest stays fresh for 15 minutes |
+
+Decisions made in chunk 4:
+
+- **One package, Next.js at the repo root** with its routes under `src/app`,
+  so the page imports the flow code directly. `next build` rewrote parts of
+  `tsconfig.json` (JSX, DOM types, its own type folders).
+- **Caching is in the browser only.** Reloading within 15 minutes reuses the
+  last digest; Refresh re-runs the flow. Nothing is cached on the server.
+- **No tests for the page.** It only displays what `buildDigest()` returns.
 
 ## Environment findings
 
