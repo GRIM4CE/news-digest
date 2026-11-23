@@ -18,7 +18,24 @@ article {
   padding: 0.75rem 0;
   border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
 }
+article .body { flex: 1; min-width: 0; }
 article p { margin: 0.2rem 0 0; }
+.media { position: relative; flex: none; width: 8rem; height: 5.5rem; }
+.media img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block; }
+/* The score sits on the picture's top-left corner, solid so it reads on any image. */
+.media .score {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.3rem;
+  background: Canvas;
+  color: CanvasText;
+  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 25%, transparent);
+}
+/* A picture that failed to load: drop it and show the score as on items without one. */
+.media.no-image { width: auto; height: auto; }
+.media.no-image img { display: none; }
+.media.no-image .score { position: static; background: color-mix(in srgb, currentColor 12%, transparent); box-shadow: none; }
+@media (max-width: 30rem) { .media { width: 5rem; height: 5rem; } }
 a { font-weight: 600; }
 footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
 .score {
