@@ -2,4 +2,20 @@ node_modules
 dist
 .env*
 *.sqlite
+/feeds.json
 .claude/settings.local.json
+
+# Private words the leak scan looks for (names, usernames, places)
+/.private-terms
+
+# Data, logs, and keys never belong in the repo
+*.csv
+*.tsv
+*.sql
+*.db
+*.parquet
+*.ipynb
+*.log
+*.pem
+*.key
+*.p12

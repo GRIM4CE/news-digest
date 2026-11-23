@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 1.
+found so far. Last updated 2026-11-23, after chunk 3.
 
 ## What we are building
 
@@ -34,7 +34,8 @@ developments, company and market news, local news.
   reversible calls itself and notes them, and asks before anything hard to
   undo or that changes scope, dependencies, or public interfaces.
 - Every chunk ends with `npm run check` (typecheck, lint, tests) passing.
-- One commit per chunk. Format: `type: short description`, imperative,
+- One commit per chunk, on a feature branch that is pushed and opened as a
+  pull request, then reviewed before it is merged into `main`. Format: `type: short description`, imperative,
   lowercase, under 50 characters, no AI attribution.
 - Chat replies stay on the one thing I raised.
 
@@ -46,6 +47,7 @@ developments, company and market news, local news.
   `allowImportingTsExtensions` and `erasableSyntaxOnly`.
 - `zod` for schemas and types, `vitest` for tests, `eslint` with
   `typescript-eslint` for lint.
+- `feedsmith` parses feeds (RSS, Atom, RDF, JSON Feed).
 - `@anthropic-ai/sdk` is approved but not installed yet; it arrives with the
   first model call.
 - Any other new dependency needs a yes first.
@@ -54,9 +56,10 @@ Commands:
 
 | Command | What it does |
 |---|---|
-| `npm run digest` | Run the flow on the sample input and print the digest |
+| `npm run digest` | Run the flow and print the digest. Uses the feeds in `feeds.json` when that file exists, otherwise the sample input |
 | `npm run check` | Typecheck, lint, and tests |
 | `npm run typecheck` / `lint` / `test` | Each check on its own |
+| `npm run leakscan` | Scan staged files for secrets and personal details. `-- --all` scans every tracked file |
 
 ## Planned workflow (flow 1)
 
@@ -109,6 +112,54 @@ Decisions made in chunk 1:
   model-written version can be added as its own chunk.
 - **Package renamed** to `news-digest`. The folder is still `reader-digest`.
 
+## Chunk 2: RSS fetch
+
+| File | Purpose |
+|---|---|
+| `src/sources/rss.ts` | `fetchArticles(feedUrls)` fetches and parses feeds into `Article[]`, and lists the feeds that failed instead of stopping. `parseArticles` and `htmlToText` are the pure parts |
+| `tests/rss.test.ts` | Four tests against inline feeds and a stub `fetch`; no network |
+| `feeds.example.json` | Template feed list. The real list goes in `feeds.json`, which is gitignored |
+
+Decisions made in chunk 2:
+
+- **Fetching sits outside the flows.** It is a shared step that runs before
+  any flow, and its output is the `articles` in `FlowInput`, so all three
+  flows are compared on the same input. The agent flows can wrap the same
+  function as a tool later if they should fetch on their own.
+- **`feedsmith` instead of `rss-parser`**, which has had no release since
+  April 2023.
+- **Article text is the feed's own snippet for now**, with HTML stripped.
+  Fetching each article URL for the full text is its own chunk.
+- **A failed feed is reported and skipped**; the rest still run.
+
+## Chunk 3: leak guards
+
+The repo is public, so secrets and personal details are stopped in layers.
+
+| Layer | What it does |
+|---|---|
+| `tools/leakscan/` | Scanner with no dependencies. Flags email addresses, home-folder paths, API tokens, private keys, SSNs, data and key file types, files over 500 kB, and any word listed in `.private-terms`. Reports file, line, and rule, never the matched text |
+| `.private-terms` | Gitignored list of private words (names, usernames, places), one per line. CI reads the same list from the `LEAKSCAN_TERMS` repository secret |
+| `.githooks/pre-commit` | Runs the scanner on staged files. Enabled per clone with `git config core.hooksPath .githooks` |
+| `.gitignore` | Keeps data, log, and key files from being staged |
+| `.github/workflows/check.yml` | Runs `npm run check` and the scanner over every tracked file on pull requests and on pushes to `main`, because a local hook can be skipped |
+
+Decisions made in chunk 3:
+
+- **A small scanner instead of gitleaks.** The main risk here is personal
+  details, which need a private word list that generic secret scanners do not
+  have. Broad secret detection is left to the git host's push protection.
+- **Findings never print the matched text**, so CI logs on a public repo do
+  not repeat the leak or reveal the private word list.
+
+Set up outside the repo (host and editor settings):
+
+- Secret scanning and push protection on the git host.
+- Branch protection on `main`: changes arrive by pull request with the
+  `check` job passing.
+- `LEAKSCAN_TERMS` repository secret.
+- Optional agent hook that runs the scanner on each file the agent writes.
+
 ## Environment findings
 
 Claude runs commands in a sandbox, which shapes a few things:
@@ -123,10 +174,14 @@ Claude runs commands in a sandbox, which shapes a few things:
   why the project uses Node's built-in TypeScript support instead.
 - **Network is filtered.** `registry.npmjs.org` works; other hosts (feeds,
   `api.anthropic.com`) are tried when first needed.
+- **Node's `fetch` ignores the sandbox proxy by default.** Inside the sandbox
+  a live fetch needs `NODE_USE_ENV_PROXY=1` and the host allowed for that
+  command. Outside the sandbox nothing extra is needed.
 
 ## Open items
 
-- Chunk 2 is the RSS fetch step. It needs a yes on an RSS parser dependency
-  (`rss-parser` proposed) and a few real feed URLs.
+- Next in the fetch step: full article text from each URL, then dedupe of
+  seen URLs in SQLite.
+- The real feed list (`feeds.json`) is still to be written.
 - `.env` loading gets wired into the CLI in the chunk that makes the first
   model call.

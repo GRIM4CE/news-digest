@@ -3,7 +3,30 @@
 Project background, plan, and decisions: `docs/project-notes.md`.
 
 Run `npm run check` (typecheck, lint, tests) before reporting a chunk as done.
-Commit once per chunk; the user has given a standing yes for that.
+Commit once per chunk, on a feature branch off `main` (e.g. `feat/rss-fetch`).
+After committing, always push the branch and open a pull request. Never commit
+directly to `main` and never merge into it; the user reviews the pull request
+and merges.
+
+## No personal details in commits
+
+This repo is public. Nothing personal to the user goes into committed files
+or commit messages:
+
+- No real name, email address, usernames, or home-folder paths (`/Users/...`).
+- No personal circumstances: employment or job search, finances or holdings,
+  location, family, health, specific teams or companies they follow.
+- Interests, feeds, and sample data in the repo stay generic. The user's real
+  interest profile and feed list belong in a gitignored file.
+- Write docs in neutral project terms, not first person about the user.
+
+Before every commit, run `npm run leakscan` (scans staged files) and read the
+staged diff (`git diff --cached`) for the above. Fix anything found before
+committing. The scan catches patterns; circumstances and interests it cannot
+recognise are still on the author. Never use `git commit --no-verify`.
+
+Take extra care with fixtures, test data, logs, and snapshots: write them from
+scratch with placeholder values, never copied from real feeds or real output.
 
 ## Permissions and sandbox
 
