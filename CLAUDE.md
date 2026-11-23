@@ -4,8 +4,9 @@ Project background, plan, and decisions: `docs/project-notes.md`.
 
 Run `npm run check` (typecheck, lint, tests) before reporting a chunk as done.
 Commit once per chunk, on a feature branch off `main` (e.g. `feat/rss-fetch`).
-Never commit directly to `main` and never merge into it; the user reviews the
-branch and merges.
+After committing, always push the branch and open a pull request. Never commit
+directly to `main` and never merge into it; the user reviews the pull request
+and merges.
 
 ## No personal details in commits
 
