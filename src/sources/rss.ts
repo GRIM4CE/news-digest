@@ -6,6 +6,31 @@ interface RawItem {
   title?: string;
   url?: string;
   html?: string;
+  image?: string;
+}
+
+interface Media {
+  thumbnails?: { url?: string }[];
+  contents?: { url?: string; type?: string; medium?: string }[];
+  groups?: Media[];
+}
+
+const isImage = (c: { type?: string; medium?: string }) =>
+  c.medium === "image" || c.type?.startsWith("image/");
+
+/** The first picture in a Media RSS block: a thumbnail, else image content. */
+function mediaImage(media?: Media): string | undefined {
+  if (!media) return undefined;
+  return (
+    media.thumbnails?.[0]?.url ??
+    media.contents?.find(isImage)?.url ??
+    media.groups?.map(mediaImage).find(Boolean)
+  );
+}
+
+/** The first `<img>` in an HTML snippet, for feeds that only embed pictures in the body. */
+export function firstImage(html: string): string | undefined {
+  return /<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']/i.exec(html)?.[1];
 }
 
 const ENTITIES: Record<string, string> = {
@@ -38,6 +63,12 @@ function readFeed(content: string): { title?: string; items: RawItem[] } {
           title: item.title,
           url: item.link,
           html: item.content?.encoded ?? item.description,
+          image:
+            mediaImage(item.media) ??
+            // RDF items have no enclosures.
+            ("enclosures" in item
+              ? item.enclosures?.find((e) => e.type?.startsWith("image/"))?.url
+              : undefined),
         })),
       };
     case "atom":
@@ -50,6 +81,11 @@ function readFeed(content: string): { title?: string; items: RawItem[] } {
             entry.links?.[0]
           )?.href,
           html: entry.content?.value ?? entry.summary?.value,
+          image:
+            mediaImage(entry.media) ??
+            entry.links?.find(
+              (link) => link.rel === "enclosure" && link.type?.startsWith("image/"),
+            )?.href,
         })),
       };
     case "json":
@@ -59,6 +95,7 @@ function readFeed(content: string): { title?: string; items: RawItem[] } {
           title: item.title,
           url: item.url,
           html: item.content_html ?? item.content_text ?? item.summary,
+          image: item.image ?? item.banner_image,
         })),
       };
   }
@@ -69,12 +106,18 @@ export function parseArticles(content: string, feedUrl: string): Article[] {
   const { title, items } = readFeed(content);
   const source = title?.trim() || new URL(feedUrl).hostname;
   return items.flatMap((item) => {
-    const article = ArticleSchema.safeParse({
+    const base = {
       url: item.url,
       title: item.title?.trim(),
       source,
       text: htmlToText(item.html ?? ""),
-    });
+    };
+    const imageUrl = (item.image ?? firstImage(item.html ?? ""))
+      ?.trim()
+      .replaceAll("&amp;", "&");
+    // A bad image address must not cost the article, so try again without it.
+    const withImage = ArticleSchema.safeParse({ ...base, imageUrl });
+    const article = withImage.success ? withImage : ArticleSchema.safeParse(base);
     return article.success ? [article.data] : [];
   });
 }

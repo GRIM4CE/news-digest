@@ -86,8 +86,25 @@ export default function Page() {
 
       {shown.map((item) => (
         <article key={item.url}>
-          <span className="score">{item.score}</span>
-          <div>
+          {item.imageUrl ? (
+            <div className="media">
+              {/* A plain img: the pictures come from any publisher's server, as they are. */}
+              <img
+                src={item.imageUrl}
+                alt=""
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={(event) => {
+                  // No picture after all: fall back to the bare score.
+                  event.currentTarget.parentElement?.classList.add("no-image");
+                }}
+              />
+              <span className="score">{item.score}</span>
+            </div>
+          ) : (
+            <span className="score">{item.score}</span>
+          )}
+          <div className="body">
             <a href={item.url} target="_blank" rel="noreferrer">
               {item.title}
             </a>

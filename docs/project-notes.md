@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 13.
+found so far. Last updated 2026-11-23, after chunk 15.
 
 ## What we are building
 
@@ -386,6 +386,40 @@ government, and each item carries the ones that apply.
   simply has no `tags` field.
 - **The web view does not filter by tag yet**; that is a separate UI change.
 
+## Chunk 14: model summaries and article images
+
+Summaries are now a model call, and articles carry a picture when the feed
+has one.
+
+- **`summarizeArticle` is one call per story**, on its best-scored article,
+  five at a time. It asks for 2-3 neutral sentences drawn only from the
+  article text. `firstSentence` is the old version, used with no API key.
+- **A failed summary skips the whole story** and lists its articles under
+  `skipped`, so they are tried again on the next run.
+- **`createWorkflow(score, group, summarize)`** takes the summarizer as a
+  third argument.
+- **`imageUrl` on an article and a digest item**, optional. The feed parser
+  takes the first of: a Media RSS thumbnail or image, an image enclosure (or
+  the JSON Feed image field), the first `<img>` in the body.
+- **Only `http` and `https` image addresses are kept.** A bad one is dropped
+  without losing the article.
+- **Images are not downloaded or stored**; the item holds the address only.
+
+With this chunk the four baseline steps in `docs/plans/llm-workflow.md` are
+built: model seam, score, summarize, interests file.
+
+## Chunk 15: images on the page
+
+Each item with a picture shows it as a thumbnail on the left, with the score
+badge on its top-left corner.
+
+- **Items without a picture are unchanged**: the round score on the left.
+- **A picture that fails to load is removed**, and the item falls back to the
+  plain score.
+- **A plain `<img>`, not `next/image`**, since the pictures come from any
+  publisher's server. They load in the browser straight from that server,
+  without a referrer.
+
 ## Environment findings
 
 Claude runs commands in a sandbox, which shapes a few things:
@@ -409,7 +443,8 @@ Claude runs commands in a sandbox, which shapes a few things:
 - The stored feed is never pruned.
 - Next in the fetch step: full article text from each URL.
 - The real feed list (`feeds.json`) is still to be written.
-- Next: summarize with the model, then show the rating, the related links
-  and a tag filter on the page.
+- Next on the page: show the rating, the related links and a tag filter.
+- Feeds without pictures: read the image from the article page, together
+  with the full-text fetch.
 - Group new articles against stories already in the stored feed.
 - `data/seen.json` is never pruned.

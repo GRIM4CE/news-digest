@@ -5,6 +5,7 @@ import {
   createWorkflow,
   keywordScore,
   scoreArticle,
+  summarizeArticle,
   type Scorer,
 } from "#/flows/workflow.ts";
 import type { callModel } from "#/llm/client.ts";
@@ -137,5 +138,40 @@ describe("workflow with a failing scorer", () => {
     expect(digest.sections[0]?.items).toHaveLength(2);
     expect(digest.sections[0]?.items[0]?.rating).toEqual(rating);
     expect(() => DigestSchema.parse(digest)).not.toThrow();
+  });
+});
+
+describe("summarizeArticle", () => {
+  it("returns the model's summary, trimmed", async () => {
+    const call = fakeCall({ ok: true, data: { summary: " A launch was approved. " } });
+    expect(await summarizeArticle(article, call)).toEqual({
+      ok: true,
+      data: "A launch was approved.",
+    });
+  });
+
+  it("treats an empty summary as a failure", async () => {
+    const call = fakeCall({ ok: true, data: { summary: "  " } });
+    expect(await summarizeArticle(article, call)).toEqual({
+      ok: false,
+      reason: "empty summary",
+    });
+  });
+});
+
+describe("workflow with a failing summarizer", () => {
+  it("leaves the story out and reports every article in it", async () => {
+    const flow = createWorkflow(
+      keywordScore,
+      async (all) => [all],
+      async () => ({ ok: false, reason: "refused" }),
+    );
+    const digest = await flow.run(input);
+    expect(digest.sections).toEqual([]);
+    expect(digest.skipped?.map((s) => s.url).sort()).toEqual([
+      "https://example.com/moon-launch",
+      "https://example.com/ts-release",
+    ]);
+    expect(digest.skipped?.[0]?.reason).toBe("summary: refused");
   });
 });
