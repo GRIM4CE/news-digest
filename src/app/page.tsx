@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import type { Feed } from "../store.ts";
+import type { Feed } from "#/store.ts";
 
 /** Reads the stored feed. The page never starts a run. */
 async function fetchFeed(): Promise<Feed> {

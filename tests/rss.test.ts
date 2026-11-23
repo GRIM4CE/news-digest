@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fetchArticles, htmlToText, parseArticles } from "../src/sources/rss.ts";
+import { fetchArticles, htmlToText, parseArticles } from "#/sources/rss.ts";
 
 const rss = `<?xml version="1.0"?>
 <rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">

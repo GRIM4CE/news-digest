@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { DigestSchema } from "../src/core/types.ts";
-import { sampleArticles, sampleInterests } from "../src/fixtures/sample.ts";
-import { workflow } from "../src/flows/workflow.ts";
+import { DigestSchema } from "#/core/types.ts";
+import { sampleArticles, sampleInterests } from "#/fixtures/sample.ts";
+import { workflow } from "#/flows/workflow.ts";
 
 const input = {
   articles: sampleArticles,
