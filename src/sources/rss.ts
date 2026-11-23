@@ -1,5 +1,6 @@
 import { parseFeed } from "feedsmith";
 import { ArticleSchema, type Article } from "#/core/types.ts";
+import { log } from "#/core/log.ts";
 
 interface RawItem {
   title?: string;
@@ -94,7 +95,9 @@ export async function fetchArticles(
         signal: AbortSignal.timeout(10_000),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return parseArticles(await response.text(), feedUrl);
+      const articles = parseArticles(await response.text(), feedUrl);
+      log(`Fetched ${feedUrl}: ${articles.length} articles`);
+      return articles;
     }),
   );
 
@@ -113,6 +116,7 @@ export async function fetchArticles(
             ? error.message
             : String(error);
       result.failures.push({ feedUrl: feedUrls[index] ?? "", reason });
+      log(`Skipped feed ${feedUrls[index]}: ${reason}`);
     }
   });
   return result;

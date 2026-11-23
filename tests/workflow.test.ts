@@ -1,7 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { DigestSchema } from "#/core/types.ts";
 import { sampleArticles, sampleInterests } from "#/fixtures/sample.ts";
-import { workflow } from "#/flows/workflow.ts";
+import {
+  createWorkflow,
+  keywordScore,
+  scoreArticle,
+  type Scorer,
+} from "#/flows/workflow.ts";
+import type { callModel } from "#/llm/client.ts";
+
+const workflow = createWorkflow(keywordScore);
+const article = sampleArticles[0]!;
+
+/** A stand-in for callModel that answers every call with `result`. */
+const fakeCall = (result: unknown) =>
+  (async () => result) as unknown as typeof callModel;
 
 const input = {
   articles: sampleArticles,
@@ -9,7 +22,7 @@ const input = {
   threshold: 5,
 };
 
-describe("workflow (stubbed)", () => {
+describe("workflow (keyword scoring)", () => {
   it("returns a digest that matches the shared schema", async () => {
     const digest = await workflow.run(input);
     expect(() => DigestSchema.parse(digest)).not.toThrow();
@@ -33,5 +46,60 @@ describe("workflow (stubbed)", () => {
   it("returns no sections when nothing clears the threshold", async () => {
     const digest = await workflow.run({ ...input, threshold: 11 });
     expect(digest.sections).toEqual([]);
+  });
+});
+
+describe("scoreArticle", () => {
+  it("scores an article as the lower of relevance and substance", async () => {
+    const reply = { reason: "On topic, thin.", relevance: 9, substance: 3, topic: "space" };
+    const result = await scoreArticle(
+      article,
+      sampleInterests,
+      fakeCall({ ok: true, data: reply }),
+    );
+    expect(result).toEqual({
+      ok: true,
+      data: {
+        article,
+        topic: "space",
+        score: 3,
+        rating: { relevance: 9, substance: 3, reason: "On topic, thin." },
+      },
+    });
+  });
+
+  it("keeps ratings inside 1 to 10", async () => {
+    const reply = { reason: "r", relevance: 14, substance: 0, topic: "other" };
+    const result = await scoreArticle(
+      article,
+      sampleInterests,
+      fakeCall({ ok: true, data: reply }),
+    );
+    expect(result.ok && result.data.rating).toMatchObject({ relevance: 10, substance: 1 });
+  });
+
+  it("limits the topic to the interest topics and other", async () => {
+    let topics: unknown;
+    const call = (async ({ schema }: { schema: { shape: { topic: { options: unknown } } } }) => {
+      topics = schema.shape.topic.options;
+      return { ok: false, reason: "unused" };
+    }) as unknown as typeof callModel;
+    await scoreArticle(article, sampleInterests, call);
+    expect(topics).toEqual(["typescript", "space", "other"]);
+  });
+});
+
+describe("workflow with a failing scorer", () => {
+  it("skips the article, reports it, and keeps the rest with their rating", async () => {
+    const rating = { relevance: 8, substance: 7, reason: "Solid." };
+    const scorer: Scorer = async (a) =>
+      a.url === article.url
+        ? { ok: false, reason: "refused" }
+        : { ok: true, data: { article: a, topic: "space", score: 7, rating } };
+    const digest = await createWorkflow(scorer).run(input);
+    expect(digest.skipped).toEqual([{ url: article.url, reason: "refused" }]);
+    expect(digest.sections[0]?.items).toHaveLength(2);
+    expect(digest.sections[0]?.items[0]?.rating).toEqual(rating);
+    expect(() => DigestSchema.parse(digest)).not.toThrow();
   });
 });

@@ -1,9 +1,11 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
-import { DigestSchema } from "./core/types.ts";
+import { log } from "./core/log.ts";
+import { DigestSchema, InterestSchema } from "./core/types.ts";
 import { sampleArticles, sampleInterests } from "./fixtures/sample.ts";
 import { workflow } from "./flows/workflow.ts";
+import { hasModelKey, MODEL } from "./llm/client.ts";
 import { fetchArticles, type FetchResult } from "./sources/rss.ts";
 
 /** One finished run: what the flow produced, and what went in. */
@@ -26,11 +28,29 @@ export async function buildDigest(): Promise<DigestRun> {
     const feedUrls = z
       .array(z.url())
       .parse(JSON.parse(await readFile("feeds.json", "utf8")));
+    log(`Fetching ${feedUrls.length} feeds`);
     ({ articles, failures } = await fetchArticles(feedUrls));
+  } else {
+    log("No feeds.json found; using the sample articles");
   }
+  let interests = sampleInterests;
+  if (existsSync("interests.json")) {
+    interests = z
+      .array(InterestSchema)
+      .min(1)
+      .parse(JSON.parse(await readFile("interests.json", "utf8")));
+  } else {
+    log("No interests.json found; scoring against the sample interests");
+  }
+  log(`Interests: ${interests.map((i) => i.topic).join(", ")}`);
+  log(
+    hasModelKey()
+      ? `Scoring with ${MODEL}`
+      : "No ANTHROPIC_API_KEY set; scoring by keyword count",
+  );
   const digest = await workflow.run({
     articles,
-    interests: sampleInterests,
+    interests,
     threshold: 5,
   });
   return {

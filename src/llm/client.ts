@@ -7,6 +7,9 @@ import type { z } from "zod";
 export const MODEL = "claude-haiku-5-5";
 export const TRACE_FILE = "data/trace.jsonl";
 
+/** False when no API key is set, in which case steps fall back to plain code. */
+export const hasModelKey = (): boolean => Boolean(process.env.ANTHROPIC_API_KEY);
+
 export interface ModelRequest<S extends z.ZodType> {
   /** Which pipeline step is calling, e.g. "score". Used in the trace. */
   step: string;

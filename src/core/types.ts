@@ -16,12 +16,27 @@ export const InterestSchema = z.object({
 });
 export type Interest = z.infer<typeof InterestSchema>;
 
+const OneToTen = z.number().int().min(1).max(10);
+
+/** Why an item got its score. Kept with the item so it can be shown later. */
+export const RatingSchema = z.object({
+  /** How well the article fits the reader's interests. */
+  relevance: OneToTen,
+  /** How much new, concrete information it carries; low for clickbait. */
+  substance: OneToTen,
+  reason: z.string(),
+});
+export type Rating = z.infer<typeof RatingSchema>;
+
 export const DigestItemSchema = z.object({
   title: z.string(),
   url: z.url(),
   source: z.string(),
-  score: z.number().int().min(1).max(10),
+  /** The lower of relevance and substance when a rating is present. */
+  score: OneToTen,
   summary: z.string(),
+  /** Missing on items scored without the model, and on older stored items. */
+  rating: RatingSchema.optional(),
 });
 export type DigestItem = z.infer<typeof DigestItemSchema>;
 
@@ -30,6 +45,8 @@ export const DigestSchema = z.object({
   sections: z.array(
     z.object({ topic: z.string(), items: z.array(DigestItemSchema) }),
   ),
+  /** Articles left out because their model call failed. */
+  skipped: z.array(z.object({ url: z.string(), reason: z.string() })).optional(),
 });
 export type Digest = z.infer<typeof DigestSchema>;
 

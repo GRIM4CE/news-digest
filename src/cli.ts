@@ -1,17 +1,12 @@
-import { FEED_FILE, runAndSave } from "./store.ts";
+import { runAndSave } from "./store.ts";
 
 /** Forces a run now, whatever the schedule says, and adds the result to the stored feed. */
-const { run, feed, added } = await runAndSave();
-const { digest, articleCount, failures, usedSamples } = run;
+const { run } = await runAndSave();
+const { digest } = run;
 
-for (const { feedUrl, reason } of failures) {
-  console.error(`Skipped ${feedUrl}: ${reason}`);
+for (const { url, reason } of digest.skipped ?? []) {
+  console.error(`Skipped ${url}: ${reason}`);
 }
-console.error(
-  usedSamples
-    ? "No feeds.json found; using sample articles"
-    : `Fetched ${articleCount} articles`,
-);
 
 console.log(`Digest (${digest.flow})\n`);
 for (const { topic, items } of digest.sections) {
@@ -19,8 +14,11 @@ for (const { topic, items } of digest.sections) {
   for (const item of items) {
     console.log(`- [${item.score}] ${item.title} (${item.source})`);
     console.log(`  ${item.summary}`);
+    if (item.rating) {
+      const { relevance, substance, reason } = item.rating;
+      console.log(`  relevance ${relevance}, substance ${substance}: ${reason}`);
+    }
     console.log(`  ${item.url}`);
   }
   console.log();
 }
-console.error(`Added ${added} new items to ${FEED_FILE} (${feed.items.length} in total)`);

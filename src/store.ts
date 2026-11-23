@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
+import { log } from "./core/log.ts";
 import { FeedItemSchema } from "./core/types.ts";
 import { buildDigest, DigestRunSchema, type DigestRun } from "./digest.ts";
 
@@ -54,5 +55,7 @@ export async function runAndSave(
   const before = await loadFeed(file);
   const feed = mergeRun(before, run);
   await saveFeed(feed, file);
-  return { run, feed, added: feed.items.length - before.items.length };
+  const added = feed.items.length - before.items.length;
+  log(`Saved ${file}: ${added} new items, ${feed.items.length} in total`);
+  return { run, feed, added };
 }

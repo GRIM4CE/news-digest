@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 9.
+found so far. Last updated 2026-11-23, after chunk 10.
 
 ## What we are building
 
@@ -63,7 +63,7 @@ Commands:
 |---|---|
 | `npm run dev` | Start the web view at `http://localhost:3000` |
 | `npm run build` | Production build of the web view |
-| `npm run digest` | Force a run now: fetch, run the flow, add the result to the stored feed, and print it. Uses the feeds in `feeds.json` when that file exists, otherwise the sample input |
+| `npm run digest` | Force a run now: fetch, run the flow, add the result to the stored feed, and print it. Uses the feeds in `feeds.json` and the interests in `interests.json` when those files exist, otherwise the sample input. Prints progress as it goes |
 | `npm run check` | Typecheck, lint, and tests |
 | `npm run typecheck` / `lint` / `test` | Each check on its own |
 | `npm run leakscan` | Scan staged files for secrets and personal details. `-- --all` scans every tracked file |
@@ -284,6 +284,44 @@ Decisions made in chunk 9:
 - **`npm run digest` loads `.env`** through Node's `--env-file-if-exists`, with
   no extra dependency. The web server gets `.env` from Next.js.
 
+## Chunk 10: model scoring
+
+Scoring is now a model call. Summaries are still the first sentence.
+
+| File | Purpose |
+|---|---|
+| `src/flows/workflow.ts` | `scoreArticle` asks the model for `relevance`, `substance`, a topic and a reason. `createWorkflow(scorer)` builds the flow, so tests pass in their own scorer. `keywordScore` is the old keyword count, used when no API key is set |
+| `src/core/types.ts` | Optional `rating` on a digest item (`relevance`, `substance`, `reason`), kept in the stored feed. Optional `skipped` on a digest, for articles whose call failed |
+| `src/core/map-limit.ts` | Runs the score calls five at a time |
+| `src/core/log.ts` | `log()` prints a timestamped progress line to stderr; silent under the test runner |
+| `src/digest.ts` | Reads interests from `interests.json` (gitignored) when it exists, otherwise the samples |
+| `interests.example.json` | Template interest list |
+
+Decisions made in chunk 10:
+
+- **Two ratings, one score.** `relevance` is fit to the interests; `substance`
+  is how much new, concrete information the article carries, low for
+  clickbait. The item's `score` is the lower of the two, so an article has to
+  be both on topic and worth reading.
+- **Each interest's description carries its own standard**: what is followed,
+  what makes a good article, what to skip. The prompt tells the model to judge
+  by that when it is given. One call per article, no routing step.
+- **The topic is an enum** of the interest topics plus `other`, so the model
+  cannot invent one.
+- **Ratings are clamped to 1-10 in code**, not constrained in the schema sent
+  to the model.
+- **A failed call skips that article** and lists it under `skipped`; the run
+  completes.
+- **The reason is stored with the item** so the web view can show it later.
+  That display is a separate change.
+- **Every step logs as it happens**: feeds fetched, each article's score and
+  topic, how many cleared the threshold, what was saved. The same lines
+  appear in the web server console during a scheduled run.
+
+Found on the first live run: with a few hundred articles in the feeds, a run
+is a few hundred calls at roughly 2,700 input tokens each, and every run
+re-scores all of them because articles below the threshold are not stored.
+
 ## Environment findings
 
 Claude runs commands in a sandbox, which shapes a few things:
@@ -308,5 +346,5 @@ Claude runs commands in a sandbox, which shapes a few things:
 - Next in the fetch step: full article text from each URL, then dedupe of
   seen URLs in SQLite.
 - The real feed list (`feeds.json`) is still to be written.
-- Next in the model plan: score with the model (relevance and substance),
-  then summarize, then the interest profile file.
+- Next: skip articles already scored in an earlier run (dedupe), then
+  summarize with the model, then show the rating on the page.
