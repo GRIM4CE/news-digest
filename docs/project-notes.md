@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 5.
+found so far. Last updated 2026-11-23, after chunk 6.
 
 ## What we are building
 
@@ -60,7 +60,7 @@ Commands:
 |---|---|
 | `npm run dev` | Start the web view at `http://localhost:3000` |
 | `npm run build` | Production build of the web view |
-| `npm run digest` | Force a run now: fetch, run the flow, store the result for the web view, and print it. Uses the feeds in `feeds.json` when that file exists, otherwise the sample input |
+| `npm run digest` | Force a run now: fetch, run the flow, add the result to the stored feed, and print it. Uses the feeds in `feeds.json` when that file exists, otherwise the sample input |
 | `npm run check` | Typecheck, lint, and tests |
 | `npm run typecheck` / `lint` / `test` | Each check on its own |
 | `npm run leakscan` | Scan staged files for secrets and personal details. `-- --all` scans every tracked file |
@@ -210,6 +210,26 @@ Decisions made in chunk 5:
 - **A run where feeds failed is still stored**, with the failures listed, and
   counts as the run for that day.
 
+## Chunk 6: persistent feed
+
+A run no longer replaces what the web view shows. Items stay in the feed and
+each run adds the new ones.
+
+| File | Purpose |
+|---|---|
+| `src/core/types.ts` | `FeedItem`: a digest item plus its topic and the time it was added |
+| `src/store.ts` | Replaces the single stored run with a feed in `data/feed.json`: `loadFeed`, `saveFeed`, and `mergeRun`, which adds a run's items and skips URLs already present |
+| `src/app/page.tsx` | One list, newest run first, each item tagged with its topic |
+
+Decisions made in chunk 6:
+
+- **This replaces the "one stored run" decision from chunk 5.** The file
+  holds every item delivered so far and the details of the last run.
+- **An item is identified by its URL.** A later run that delivers the same
+  URL leaves the stored item as it is.
+- **Nothing is ever removed.** The feed grows without limit; pruning by age
+  is an open item.
+
 ## Environment findings
 
 Claude runs commands in a sandbox, which shapes a few things:
@@ -230,6 +250,7 @@ Claude runs commands in a sandbox, which shapes a few things:
 
 ## Open items
 
+- The stored feed is never pruned.
 - Next in the fetch step: full article text from each URL, then dedupe of
   seen URLs in SQLite.
 - The real feed list (`feeds.json`) is still to be written.

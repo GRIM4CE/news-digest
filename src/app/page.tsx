@@ -1,21 +1,22 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { DigestRun } from "../digest.ts";
+import type { Feed } from "../store.ts";
 
-/** Reads the stored run. `null` means no run has finished yet. */
-async function fetchRun(): Promise<DigestRun | null> {
+/** Reads the stored feed. The page never starts a run. */
+async function fetchFeed(): Promise<Feed> {
   const response = await fetch("/api/digest");
-  const body = (await response.json()) as { run?: DigestRun | null; error?: string };
+  const body = (await response.json()) as Feed & { error?: string };
   if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
-  return body.run ?? null;
+  return body;
 }
 
 export default function Page() {
   const { data, error, isPending, isFetching, refetch } = useQuery({
-    queryKey: ["digest"],
-    queryFn: fetchRun,
+    queryKey: ["feed"],
+    queryFn: fetchFeed,
   });
+  const lastRun = data?.lastRun;
 
   return (
     <main>
@@ -27,48 +28,43 @@ export default function Page() {
       </header>
 
       {isPending && <p className="muted">Loading…</p>}
-      {error && <p className="error">Could not load the digest: {error.message}</p>}
+      {error && <p className="error">Could not load the feed: {error.message}</p>}
 
-      {data === null && (
+      {data && !lastRun && (
         <p className="muted">
           No run has finished yet. One starts when the app launches; reload in a moment.
         </p>
       )}
 
-      {data && (
+      {lastRun && (
         <>
           <p className="muted">
-            Flow: {data.digest.flow} · {data.articleCount} articles in ·{" "}
-            {data.usedSamples ? "sample articles (no feeds.json)" : "live feeds"} ·
-            ran {new Date(data.ranAt).toLocaleString()}
+            {data.items.length} items · last run {new Date(lastRun.ranAt).toLocaleString()} (
+            {lastRun.flow}, {lastRun.articleCount} articles in,{" "}
+            {lastRun.usedSamples ? "sample articles" : "live feeds"})
           </p>
-          {data.failures.map(({ feedUrl, reason }) => (
+          {lastRun.failures.map(({ feedUrl, reason }) => (
             <p key={feedUrl} className="error">
               Skipped {feedUrl}: {reason}
             </p>
           ))}
-          {data.digest.sections.length === 0 && (
-            <p className="muted">No articles scored above the threshold.</p>
-          )}
-          {data.digest.sections.map(({ topic, items }) => (
-            <section key={topic}>
-              <h2>{topic}</h2>
-              {items.map((item) => (
-                <article key={item.url}>
-                  <span className="score">{item.score}</span>
-                  <div>
-                    <a href={item.url} target="_blank" rel="noreferrer">
-                      {item.title}
-                    </a>
-                    <p>{item.summary}</p>
-                    <p className="muted">{item.source}</p>
-                  </div>
-                </article>
-              ))}
-            </section>
-          ))}
         </>
       )}
+
+      {data?.items.map((item) => (
+        <article key={item.url}>
+          <span className="score">{item.score}</span>
+          <div>
+            <a href={item.url} target="_blank" rel="noreferrer">
+              {item.title}
+            </a>
+            <p>{item.summary}</p>
+            <p className="muted">
+              {item.topic} · {item.source} · {new Date(item.addedAt).toLocaleDateString()}
+            </p>
+          </div>
+        </article>
+      ))}
     </main>
   );
 }
