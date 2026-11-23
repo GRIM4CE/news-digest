@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "leakscan": "node tools/leakscan/cli.ts",
     "check": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
