@@ -6,6 +6,7 @@ next-env.d.ts
 .env*
 *.sqlite
 /feeds.json
+/interests.json
 /data
 .claude/settings.local.json
 
