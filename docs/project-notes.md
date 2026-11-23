@@ -45,6 +45,10 @@ developments, company and market news, local news.
 - Node runs the `.ts` files directly (built-in type stripping). No `tsx`, no
   build step. Imports therefore use `.ts` extensions, and `tsconfig.json` sets
   `allowImportingTsExtensions` and `erasableSyntaxOnly`.
+- `#/` is an alias for `src/`, so `#/store.ts` replaces `../../../store.ts`.
+  It is declared under `imports` in `package.json` rather than as tsconfig
+  `paths`, because Node resolves `imports` itself and ignores `paths`. Files
+  in the same folder still import each other with `./`.
 - `zod` for schemas and types, `vitest` for tests, `eslint` with
   `typescript-eslint` for lint.
 - `feedsmith` parses feeds (RSS, Atom, RDF, JSON Feed).

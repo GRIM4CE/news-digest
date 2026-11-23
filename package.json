@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
   "description": "A personal reading digest built three ways: LLM workflow, single agent, multi-agent.",
   "scripts": {
     "digest": "node src/cli.ts",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isDue, msUntilHour } from "../src/schedule.ts";
+import { isDue, msUntilHour } from "#/schedule.ts";
 
 const HOUR_MS = 60 * 60_000;
 
