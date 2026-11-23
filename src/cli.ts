@@ -1,7 +1,7 @@
 import { runAndSave } from "./store.ts";
 
 /** Forces a run now, whatever the schedule says, and adds the result to the stored feed. */
-const { run } = await runAndSave();
+const { run } = await runAndSave({ rescore: process.argv.includes("--rescore") });
 const { digest } = run;
 
 for (const { url, reason } of digest.skipped ?? []) {

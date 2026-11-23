@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 10.
+found so far. Last updated 2026-11-23, after chunk 11.
 
 ## What we are building
 
@@ -322,6 +322,32 @@ Found on the first live run: with a few hundred articles in the feeds, a run
 is a few hundred calls at roughly 2,700 input tokens each, and every run
 re-scores all of them because articles below the threshold are not stored.
 
+## Chunk 11: skip articles already scored
+
+A run rates only articles it has not rated before.
+
+| File | Purpose |
+|---|---|
+| `src/core/dedupe.ts` | `newArticles(articles, seen)` drops URLs scored in an earlier run and repeats inside one fetch |
+| `src/store.ts` | `loadSeen` / `saveSeen` for `data/seen.json` (gitignored): each scored URL with the time it was first scored. `runAndSave` takes options, `rescore` among them |
+| `src/digest.ts` | `buildDigest(seen)` filters before the flow runs and returns the URLs it scored |
+
+Decisions made in chunk 11:
+
+- **Dedupe is a shared step before the flow**, like fetching, so all three
+  flows get the same filtered input.
+- **A JSON file, not SQLite.** It does the job with no new dependency. This
+  replaces the SQLite plan from the original brief.
+- **Rejected articles are remembered too**; that is what stops the daily
+  re-scoring. An article whose model call failed is not, so it is retried.
+- **The sample articles are never deduped**, so a run without `feeds.json`
+  always shows something.
+- **`npm run digest -- --rescore`** ignores the file for one run, for use
+  after editing `interests.json`. Items already in the stored feed keep their
+  old score, since the feed never replaces an existing URL.
+- **Only exact URLs match.** Two articles about the same story are both kept;
+  grouping them is the next chunk.
+
 ## Environment findings
 
 Claude runs commands in a sandbox, which shapes a few things:
@@ -343,8 +369,8 @@ Claude runs commands in a sandbox, which shapes a few things:
 ## Open items
 
 - The stored feed is never pruned.
-- Next in the fetch step: full article text from each URL, then dedupe of
-  seen URLs in SQLite.
+- Next in the fetch step: full article text from each URL.
 - The real feed list (`feeds.json`) is still to be written.
-- Next: skip articles already scored in an earlier run (dedupe), then
-  summarize with the model, then show the rating on the page.
+- Next: group articles about the same story, then summarize with the model,
+  then show the rating on the page.
+- `data/seen.json` is never pruned.

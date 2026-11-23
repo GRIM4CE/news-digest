@@ -13,6 +13,10 @@ export const FeedSchema = z.object({
 export type Feed = z.infer<typeof FeedSchema>;
 
 export const FEED_FILE = "data/feed.json";
+/** URLs scored in earlier runs, each with the time it was first scored. */
+export const SEEN_FILE = "data/seen.json";
+const SeenSchema = z.record(z.string(), z.iso.datetime());
+export type Seen = z.infer<typeof SeenSchema>;
 
 /** Add a run's items to the feed. Items already there (same URL) are kept as they are. */
 export function mergeRun(feed: Feed, run: DigestRun): Feed {
@@ -40,22 +44,45 @@ export async function loadFeed(file = FEED_FILE): Promise<Feed> {
   return FeedSchema.parse(JSON.parse(content));
 }
 
-export async function saveFeed(feed: Feed, file = FEED_FILE): Promise<void> {
+async function writeJson(file: string, value: unknown): Promise<void> {
   await mkdir(dirname(file), { recursive: true });
   // Write then rename, so a reader never sees a half-written file.
-  await writeFile(`${file}.tmp`, JSON.stringify(feed, null, 2));
+  await writeFile(`${file}.tmp`, JSON.stringify(value, null, 2));
   await rename(`${file}.tmp`, file);
 }
 
-/** Run the flow now and add what it delivers to the stored feed. */
-export async function runAndSave(
-  file = FEED_FILE,
-): Promise<{ run: DigestRun; feed: Feed; added: number }> {
-  const run = await buildDigest();
-  const before = await loadFeed(file);
+export const saveFeed = (feed: Feed, file = FEED_FILE) => writeJson(file, feed);
+
+export async function loadSeen(file = SEEN_FILE): Promise<Seen> {
+  try {
+    return SeenSchema.parse(JSON.parse(await readFile(file, "utf8")));
+  } catch {
+    return {};
+  }
+}
+
+export const saveSeen = (seen: Seen, file = SEEN_FILE) => writeJson(file, seen);
+
+/**
+ * Run the flow now on articles not scored before, add what it delivers to the
+ * stored feed, and remember what was scored. `rescore` ignores earlier runs.
+ */
+export async function runAndSave({
+  feedFile = FEED_FILE,
+  seenFile = SEEN_FILE,
+  rescore = false,
+} = {}): Promise<{ run: DigestRun; feed: Feed; added: number }> {
+  const seen = await loadSeen(seenFile);
+  const { scored, ...run } = await buildDigest(
+    new Set(rescore ? [] : Object.keys(seen)),
+  );
+  const before = await loadFeed(feedFile);
   const feed = mergeRun(before, run);
-  await saveFeed(feed, file);
+  await saveFeed(feed, feedFile);
+  // Earlier entries win, so a URL keeps the time it was first scored.
+  const scoredNow = Object.fromEntries(scored.map((url) => [url, run.ranAt]));
+  await saveSeen({ ...scoredNow, ...seen }, seenFile);
   const added = feed.items.length - before.items.length;
-  log(`Saved ${file}: ${added} new items, ${feed.items.length} in total`);
+  log(`Saved ${feedFile}: ${added} new items, ${feed.items.length} in total`);
   return { run, feed, added };
 }

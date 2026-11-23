@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { DigestRun } from "#/digest.ts";
-import { loadFeed, mergeRun, saveFeed } from "#/store.ts";
+import { loadFeed, loadSeen, mergeRun, saveFeed, saveSeen } from "#/store.ts";
 
 function runWith(ranAt: string, urls: string[]): DigestRun {
   return {
@@ -65,5 +65,16 @@ describe("feed store", () => {
     const feed = mergeRun({ items: [] }, first);
     await saveFeed(feed, file);
     expect(await loadFeed(file)).toEqual(feed);
+  });
+});
+
+describe("seen store", () => {
+  it("starts empty and reads back what it saved", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "seen-"));
+    const file = join(dir, "seen.json");
+    expect(await loadSeen(file)).toEqual({});
+    const seen = { "https://example.com/a": first.ranAt };
+    await saveSeen(seen, file);
+    expect(await loadSeen(file)).toEqual(seen);
   });
 });
