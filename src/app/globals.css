@@ -9,6 +9,9 @@ header { display: flex; justify-content: space-between; align-items: center; }
 h1 { margin: 0; font-size: 1.5rem; }
 h2 { margin: 2rem 0 0.5rem; font-size: 1.1rem; text-transform: capitalize; }
 button { font: inherit; padding: 0.3rem 0.9rem; cursor: pointer; }
+nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+nav button { border-radius: 999px; border: 1px solid currentColor; background: none; text-transform: capitalize; }
+nav button[aria-pressed="true"] { background: CanvasText; color: Canvas; }
 article {
   display: flex;
   gap: 0.75rem;
