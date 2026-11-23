@@ -2,8 +2,8 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { DigestRun } from "../src/digest.ts";
-import { loadFeed, mergeRun, saveFeed } from "../src/store.ts";
+import type { DigestRun } from "#/digest.ts";
+import { loadFeed, mergeRun, saveFeed } from "#/store.ts";
 
 function runWith(ranAt: string, urls: string[]): DigestRun {
   return {

@@ -1,5 +1,5 @@
 import { parseFeed } from "feedsmith";
-import { ArticleSchema, type Article } from "../core/types.ts";
+import { ArticleSchema, type Article } from "#/core/types.ts";
 
 interface RawItem {
   title?: string;

@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 6.
+found so far. Last updated 2026-11-23, after chunk 7.
 
 ## What we are building
 
@@ -45,6 +45,10 @@ developments, company and market news, local news.
 - Node runs the `.ts` files directly (built-in type stripping). No `tsx`, no
   build step. Imports therefore use `.ts` extensions, and `tsconfig.json` sets
   `allowImportingTsExtensions` and `erasableSyntaxOnly`.
+- `#/` is an alias for `src/`, so `#/store.ts` replaces `../../../store.ts`.
+  It is declared under `imports` in `package.json` rather than as tsconfig
+  `paths`, because Node resolves `imports` itself and ignores `paths`. Files
+  in the same folder still import each other with `./`.
 - `zod` for schemas and types, `vitest` for tests, `eslint` with
   `typescript-eslint` for lint.
 - `feedsmith` parses feeds (RSS, Atom, RDF, JSON Feed).
@@ -229,6 +233,16 @@ Decisions made in chunk 6:
   URL leaves the stored item as it is.
 - **Nothing is ever removed.** The feed grows without limit; pruning by age
   is an open item.
+
+## Chunk 7: topic filter
+
+The page has a row of filter buttons, one per topic, with item counts.
+
+- **The topics are not a fixed list.** They are read from the stored items,
+  so they are whatever the flow assigned. A new topic from a later run shows
+  up as a new button with no code change.
+- **Filtering is in the browser**, over the feed already loaded. The choice
+  is not saved; a page reload shows everything again.
 
 ## Environment findings
 

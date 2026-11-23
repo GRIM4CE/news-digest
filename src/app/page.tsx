@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { Feed } from "../store.ts";
+import { useState } from "react";
+import type { Feed } from "#/store.ts";
 
 /** Reads the stored feed. The page never starts a run. */
 async function fetchFeed(): Promise<Feed> {
@@ -16,7 +17,16 @@ export default function Page() {
     queryKey: ["feed"],
     queryFn: fetchFeed,
   });
+  const [topic, setTopic] = useState<string>();
   const lastRun = data?.lastRun;
+  const items = data?.items ?? [];
+
+  // Categories are whatever topics the flow has assigned to the stored items.
+  const counts = new Map<string, number>();
+  for (const item of items) counts.set(item.topic, (counts.get(item.topic) ?? 0) + 1);
+  // A topic picked earlier may be gone after a reload; fall back to everything.
+  const active = topic !== undefined && counts.has(topic) ? topic : undefined;
+  const shown = active ? items.filter((item) => item.topic === active) : items;
 
   return (
     <main>
@@ -51,7 +61,20 @@ export default function Page() {
         </>
       )}
 
-      {data?.items.map((item) => (
+      {counts.size > 1 && (
+        <nav>
+          <button aria-pressed={!active} onClick={() => setTopic(undefined)}>
+            All ({items.length})
+          </button>
+          {[...counts].map(([name, count]) => (
+            <button key={name} aria-pressed={active === name} onClick={() => setTopic(name)}>
+              {name} ({count})
+            </button>
+          ))}
+        </nav>
+      )}
+
+      {shown.map((item) => (
         <article key={item.url}>
           <span className="score">{item.score}</span>
           <div>

@@ -1,4 +1,4 @@
-import type { Article, Interest } from "../core/types.ts";
+import type { Article, Interest } from "#/core/types.ts";
 
 export const sampleInterests: Interest[] = [
   { topic: "typescript", description: "TypeScript language and tooling news" },

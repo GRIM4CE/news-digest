@@ -5,7 +5,7 @@ import type {
   Flow,
   FlowInput,
   Interest,
-} from "../core/types.ts";
+} from "#/core/types.ts";
 
 interface Scored {
   article: Article;
