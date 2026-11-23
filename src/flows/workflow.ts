@@ -11,6 +11,7 @@ import type {
   Rating,
 } from "#/core/types.ts";
 import { callModel, hasModelKey, type ModelResult } from "#/llm/client.ts";
+import { eachAlone, groupSameStory, type Grouper } from "./group.ts";
 
 export interface Scored {
   article: Article;
@@ -120,8 +121,11 @@ export function composeDigest(
   return { flow, sections };
 }
 
-/** Fixed pipeline: score every article, summarize the keepers, compose. */
-export function createWorkflow(score: Scorer): Flow {
+/**
+ * Fixed pipeline: score every article, keep those over the threshold, collapse
+ * articles about the same story, summarize one per story, compose.
+ */
+export function createWorkflow(score: Scorer, group: Grouper = eachAlone): Flow {
   return {
     name: "workflow",
     async run({ articles, interests, threshold }: FlowInput): Promise<Digest> {
@@ -140,26 +144,48 @@ export function createWorkflow(score: Scorer): Flow {
         r.ok ? [] : [{ url: articles[i]?.url ?? "", reason: r.reason }],
       );
       const keepers = scored.filter((s) => s.score >= threshold);
-      log(`${keepers.length} of ${articles.length} scored ${threshold} or higher; summarizing`);
+      log(`${keepers.length} of ${articles.length} scored ${threshold} or higher`);
+
+      // Same-story articles can only share a topic, so group one topic at a time.
+      const byTopic = Map.groupBy(keepers, (k) => k.topic);
+      const stories = (
+        await Promise.all([...byTopic.values()].map((items) => group(items)))
+      ).flat();
+      log(`Grouped into ${stories.length} stories; summarizing`);
+
       const entries = await Promise.all(
-        keepers.map(async ({ article, score, topic, rating }) => ({
-          topic,
-          item: {
-            title: article.title,
-            url: article.url,
-            source: article.source,
-            score,
-            summary: await summarizeArticle(article),
-            ...(rating && { rating }),
-          },
-        })),
+        stories.map(async (story) => {
+          // The best-scored article stands for the story; the rest become links.
+          const [main, ...rest] = story.toSorted((a, b) => b.score - a.score);
+          if (!main) throw new Error("a story has no articles");
+          const { article, score, topic, rating } = main;
+          const related = rest.map(({ article: { title, url, source } }) => ({
+            title,
+            url,
+            source,
+          }));
+          return {
+            topic,
+            item: {
+              title: article.title,
+              url: article.url,
+              source: article.source,
+              score,
+              summary: await summarizeArticle(article),
+              ...(rating && { rating }),
+              ...(related.length > 0 && { related }),
+            },
+          };
+        }),
       );
       return { ...composeDigest(this.name, entries), skipped };
     },
   };
 }
 
-/** Scores with the model when an API key is set, otherwise by keyword. */
-export const workflow: Flow = createWorkflow((article, interests) =>
-  hasModelKey() ? scoreArticle(article, interests) : keywordScore(article, interests),
+/** Scores and groups with the model when an API key is set; otherwise keyword scores, no grouping. */
+export const workflow: Flow = createWorkflow(
+  (article, interests) =>
+    hasModelKey() ? scoreArticle(article, interests) : keywordScore(article, interests),
+  (items) => (hasModelKey() ? groupSameStory(items) : eachAlone(items)),
 );

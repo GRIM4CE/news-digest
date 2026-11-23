@@ -19,6 +19,9 @@ for (const { topic, items } of digest.sections) {
       console.log(`  relevance ${relevance}, substance ${substance}: ${reason}`);
     }
     console.log(`  ${item.url}`);
+    for (const { title, source, url } of item.related ?? []) {
+      console.log(`  also: ${title} (${source}) ${url}`);
+    }
   }
   console.log();
 }

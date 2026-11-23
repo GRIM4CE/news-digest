@@ -37,6 +37,10 @@ export const DigestItemSchema = z.object({
   summary: z.string(),
   /** Missing on items scored without the model, and on older stored items. */
   rating: RatingSchema.optional(),
+  /** Other articles about the same story, collapsed into this item. */
+  related: z
+    .array(z.object({ title: z.string(), url: z.url(), source: z.string() }))
+    .optional(),
 });
 export type DigestItem = z.infer<typeof DigestItemSchema>;
 
