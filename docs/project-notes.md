@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 8.
+found so far. Last updated 2026-11-23, after chunk 9.
 
 ## What we are building
 
@@ -54,8 +54,7 @@ developments, company and market news, local news.
 - `feedsmith` parses feeds (RSS, Atom, RDF, JSON Feed).
 - `next` and `react` render the web view; `@tanstack/react-query` caches the
   digest in the browser.
-- `@anthropic-ai/sdk` is approved but not installed yet; it arrives with the
-  first model call.
+- `@anthropic-ai/sdk` makes the model calls, through `src/llm/client.ts` only.
 - Any other new dependency needs a yes first.
 
 Commands:
@@ -260,6 +259,31 @@ The page shows 20 items at a time, with Previous and Next buttons and a
   and the page count is for that topic's items.
 - **The page number is not saved**; a page reload starts at page 1.
 
+## Chunk 9: model seam
+
+The plan for putting model calls into the workflow is in
+`docs/plans/llm-workflow.md`. This chunk is its first step: the function every
+model call goes through. Nothing calls it yet, so the digest is unchanged.
+
+| File | Purpose |
+|---|---|
+| `src/llm/client.ts` | `callModel({ step, schema, system, user })` sends one request to Haiku 5.5 with structured outputs and returns either data matching the zod schema or a reason it failed |
+| `tests/llm.test.ts` | Six tests against a fake client: success, refusal, cut-off, schema mismatch, failed request, and one trace line per call |
+
+Decisions made in chunk 9:
+
+- **A failed call is a value, not an exception.** A refusal, a cut-off reply, a
+  schema mismatch, or an API error comes back as `{ ok: false, reason }`, so a
+  step can skip one article and keep the run going.
+- **Every call is traced** to `data/trace.jsonl` (gitignored): time, step,
+  model, duration, token counts, outcome. Prompts and replies are not stored.
+- **Thinking is off and replies are capped at 1,024 tokens**, since each call
+  is one narrow job with a small structured reply.
+- **The client is passed in**, with the real one as the default, so tests and
+  the later flows can supply a fake.
+- **`npm run digest` loads `.env`** through Node's `--env-file-if-exists`, with
+  no extra dependency. The web server gets `.env` from Next.js.
+
 ## Environment findings
 
 Claude runs commands in a sandbox, which shapes a few things:
@@ -284,5 +308,5 @@ Claude runs commands in a sandbox, which shapes a few things:
 - Next in the fetch step: full article text from each URL, then dedupe of
   seen URLs in SQLite.
 - The real feed list (`feeds.json`) is still to be written.
-- `.env` loading gets wired into the CLI in the chunk that makes the first
-  model call.
+- Next in the model plan: score with the model (relevance and substance),
+  then summarize, then the interest profile file.
