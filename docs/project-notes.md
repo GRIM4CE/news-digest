@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 11.
+found so far. Last updated 2026-11-23, after chunk 12.
 
 ## What we are building
 
@@ -348,6 +348,32 @@ Decisions made in chunk 11:
 - **Only exact URLs match.** Two articles about the same story are both kept;
   grouping them is the next chunk.
 
+## Chunk 12: group articles about the same story
+
+Feeds often carry several articles on one story, sometimes from the same
+source under different headlines. They are now collapsed into one item.
+
+| File | Purpose |
+|---|---|
+| `src/flows/group.ts` | `groupSameStory` is one model call per topic that says which kept articles report the same event. `partition` checks the answer |
+| `src/flows/workflow.ts` | The pipeline is now score, gate, group, summarize, compose. `createWorkflow(score, group)` takes the grouper as a second argument |
+| `src/core/types.ts` | Optional `related` on a digest item: title, URL and source of each article collapsed into it |
+
+Decisions made in chunk 12:
+
+- **A model call, not title matching.** Two headlines for one story can share
+  almost no words, so word overlap misses them.
+- **Grouping runs after the threshold gate**, on kept articles only and one
+  topic at a time, so it is a handful of calls per run. Every new article is
+  still scored once.
+- **The best-scored article stands for the story**; the others are stored as
+  `related` links and are not summarized.
+- **Code checks the model's answer.** Numbers out of range or used twice are
+  ignored, and an article the model leaves out stays as its own item. If the
+  call fails, every article is kept separately.
+- **No grouping without an API key.**
+- **Grouping is within one run.** A follow-up in a later run is a new item.
+
 ## Environment findings
 
 Claude runs commands in a sandbox, which shapes a few things:
@@ -371,6 +397,7 @@ Claude runs commands in a sandbox, which shapes a few things:
 - The stored feed is never pruned.
 - Next in the fetch step: full article text from each URL.
 - The real feed list (`feeds.json`) is still to be written.
-- Next: group articles about the same story, then summarize with the model,
-  then show the rating on the page.
+- Next: tags within a topic, then summarize with the model, then show the
+  rating and the related links on the page.
+- Group new articles against stories already in the stored feed.
 - `data/seen.json` is never pruned.
