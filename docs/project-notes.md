@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 14.
+found so far. Last updated 2026-11-23, after chunk 15.
 
 ## What we are building
 
@@ -407,6 +407,18 @@ has one.
 
 With this chunk the four baseline steps in `docs/plans/llm-workflow.md` are
 built: model seam, score, summarize, interests file.
+
+## Chunk 15: images on the page
+
+Each item with a picture shows it as a thumbnail on the left, with the score
+badge on its top-left corner.
+
+- **Items without a picture are unchanged**: the round score on the left.
+- **A picture that fails to load is removed**, and the item falls back to the
+  plain score.
+- **A plain `<img>`, not `next/image`**, since the pictures come from any
+  publisher's server. They load in the browser straight from that server,
+  without a referrer.
 
 ## Environment findings
 
