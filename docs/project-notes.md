@@ -34,7 +34,8 @@ developments, company and market news, local news.
   reversible calls itself and notes them, and asks before anything hard to
   undo or that changes scope, dependencies, or public interfaces.
 - Every chunk ends with `npm run check` (typecheck, lint, tests) passing.
-- One commit per chunk. Format: `type: short description`, imperative,
+- One commit per chunk, on a feature branch that is reviewed before it is
+  merged into `main`. Format: `type: short description`, imperative,
   lowercase, under 50 characters, no AI attribution.
 - Chat replies stay on the one thing I raised.
 
