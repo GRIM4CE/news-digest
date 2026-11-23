@@ -5,6 +5,7 @@ import {
   createWorkflow,
   keywordScore,
   scoreArticle,
+  summarizeArticle,
   type Scorer,
 } from "#/flows/workflow.ts";
 import type { callModel } from "#/llm/client.ts";
@@ -51,7 +52,7 @@ describe("workflow (keyword scoring)", () => {
 
 describe("scoreArticle", () => {
   it("scores an article as the lower of relevance and substance", async () => {
-    const reply = { reason: "On topic, thin.", relevance: 9, substance: 3, topic: "space" };
+    const reply = { reason: "On topic, thin.", relevance: 9, substance: 3, topic: "space", tags: [] };
     const result = await scoreArticle(
       article,
       sampleInterests,
@@ -69,7 +70,7 @@ describe("scoreArticle", () => {
   });
 
   it("keeps ratings inside 1 to 10", async () => {
-    const reply = { reason: "r", relevance: 14, substance: 0, topic: "other" };
+    const reply = { reason: "r", relevance: 14, substance: 0, topic: "other", tags: [] };
     const result = await scoreArticle(
       article,
       sampleInterests,
@@ -89,6 +90,42 @@ describe("scoreArticle", () => {
   });
 });
 
+describe("scoreArticle tags", () => {
+  const interests = [
+    { topic: "space", description: "Spaceflight.", tags: ["launch", "science"] },
+    { topic: "typescript", description: "TypeScript.", tags: ["release"] },
+  ];
+  const reply = (tags: string[]) =>
+    fakeCall({
+      ok: true,
+      data: { reason: "r", relevance: 8, substance: 8, topic: "space", tags },
+    });
+
+  it("keeps only tags that belong to the chosen topic", async () => {
+    const result = await scoreArticle(article, interests, reply(["release", "science"]));
+    expect(result.ok && result.data.tags).toEqual(["science"]);
+  });
+
+  it("leaves tags off when none apply", async () => {
+    const result = await scoreArticle(article, interests, reply([]));
+    expect(result.ok && "tags" in result.data).toBe(false);
+  });
+
+  it("offers the model every interest's tags and no others", async () => {
+    let options: unknown;
+    const call = (async ({
+      schema,
+    }: {
+      schema: { shape: { tags: { element: { options: unknown } } } };
+    }) => {
+      options = schema.shape.tags.element.options;
+      return { ok: false, reason: "unused" };
+    }) as unknown as typeof callModel;
+    await scoreArticle(article, interests, call);
+    expect(options).toEqual(["launch", "science", "release"]);
+  });
+});
+
 describe("workflow with a failing scorer", () => {
   it("skips the article, reports it, and keeps the rest with their rating", async () => {
     const rating = { relevance: 8, substance: 7, reason: "Solid." };
@@ -101,5 +138,40 @@ describe("workflow with a failing scorer", () => {
     expect(digest.sections[0]?.items).toHaveLength(2);
     expect(digest.sections[0]?.items[0]?.rating).toEqual(rating);
     expect(() => DigestSchema.parse(digest)).not.toThrow();
+  });
+});
+
+describe("summarizeArticle", () => {
+  it("returns the model's summary, trimmed", async () => {
+    const call = fakeCall({ ok: true, data: { summary: " A launch was approved. " } });
+    expect(await summarizeArticle(article, call)).toEqual({
+      ok: true,
+      data: "A launch was approved.",
+    });
+  });
+
+  it("treats an empty summary as a failure", async () => {
+    const call = fakeCall({ ok: true, data: { summary: "  " } });
+    expect(await summarizeArticle(article, call)).toEqual({
+      ok: false,
+      reason: "empty summary",
+    });
+  });
+});
+
+describe("workflow with a failing summarizer", () => {
+  it("leaves the story out and reports every article in it", async () => {
+    const flow = createWorkflow(
+      keywordScore,
+      async (all) => [all],
+      async () => ({ ok: false, reason: "refused" }),
+    );
+    const digest = await flow.run(input);
+    expect(digest.sections).toEqual([]);
+    expect(digest.skipped?.map((s) => s.url).sort()).toEqual([
+      "https://example.com/moon-launch",
+      "https://example.com/ts-release",
+    ]);
+    expect(digest.skipped?.[0]?.reason).toBe("summary: refused");
   });
 });

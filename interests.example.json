@@ -1,7 +1,12 @@
 [
   {
     "topic": "technology",
-    "description": "New software and hardware releases, and research with practical use. Not product rumours or deal roundups."
+    "description": "New software and hardware releases, and research with practical use. Not product rumours or deal roundups.",
+    "tags": [
+      "software",
+      "hardware",
+      "research"
+    ]
   },
   {
     "topic": "science",
