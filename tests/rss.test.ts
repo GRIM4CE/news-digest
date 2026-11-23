@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fetchArticles, htmlToText, parseArticles } from "#/sources/rss.ts";
+import { fetchArticles, firstImage, htmlToText, parseArticles } from "#/sources/rss.ts";
 
 const rss = `<?xml version="1.0"?>
 <rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
@@ -83,5 +83,49 @@ describe("fetchArticles", () => {
       { feedUrl: "https://example.com/gone", reason: "HTTP 404" },
       { feedUrl: "https://example.com/junk", reason: "Unrecognized feed format" },
     ]);
+  });
+});
+
+describe("article images", () => {
+  const feed = (item: string) => `<?xml version="1.0"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel><title>Example</title>
+    <item><title>Post</title><link>https://example.com/post</link>${item}</item>
+  </channel>
+</rss>`;
+  const imageOf = (item: string) =>
+    parseArticles(feed(item), "https://example.com/feed")[0]?.imageUrl;
+
+  it("takes a Media RSS thumbnail", () => {
+    expect(imageOf('<media:thumbnail url="https://example.com/thumb.jpg"/>')).toBe(
+      "https://example.com/thumb.jpg",
+    );
+  });
+
+  it("takes an image enclosure but not an audio one", () => {
+    expect(
+      imageOf('<enclosure url="https://example.com/pic.png" type="image/png" length="1"/>'),
+    ).toBe("https://example.com/pic.png");
+    expect(
+      imageOf('<enclosure url="https://example.com/show.mp3" type="audio/mpeg" length="1"/>'),
+    ).toBeUndefined();
+  });
+
+  it("falls back to the first picture in the body", () => {
+    const body = '<description><![CDATA[<p>Hi</p><img alt="x" src="https://example.com/a.jpg?w=1&amp;h=2">]]></description>';
+    expect(imageOf(body)).toBe("https://example.com/a.jpg?w=1&h=2");
+  });
+
+  it("keeps the article when the image address is not a web address", () => {
+    const article = parseArticles(
+      feed('<description><![CDATA[<img src="/relative.jpg">]]></description>'),
+      "https://example.com/feed",
+    )[0];
+    expect(article?.url).toBe("https://example.com/post");
+    expect(article?.imageUrl).toBeUndefined();
+  });
+
+  it("finds no image in plain text", () => {
+    expect(firstImage("<p>No pictures here</p>")).toBeUndefined();
   });
 });
