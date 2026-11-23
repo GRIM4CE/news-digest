@@ -3,19 +3,18 @@
 import { useQuery } from "@tanstack/react-query";
 import type { DigestRun } from "../digest.ts";
 
-async function fetchDigest(): Promise<DigestRun> {
+/** Reads the stored run. `null` means no run has finished yet. */
+async function fetchRun(): Promise<DigestRun | null> {
   const response = await fetch("/api/digest");
-  const body: unknown = await response.json();
-  if (!response.ok) {
-    throw new Error((body as { error?: string }).error ?? `HTTP ${response.status}`);
-  }
-  return body as DigestRun;
+  const body = (await response.json()) as { run?: DigestRun | null; error?: string };
+  if (!response.ok) throw new Error(body.error ?? `HTTP ${response.status}`);
+  return body.run ?? null;
 }
 
 export default function Page() {
-  const { data, error, isPending, isFetching, refetch, dataUpdatedAt } = useQuery({
+  const { data, error, isPending, isFetching, refetch } = useQuery({
     queryKey: ["digest"],
-    queryFn: fetchDigest,
+    queryFn: fetchRun,
   });
 
   return (
@@ -23,19 +22,25 @@ export default function Page() {
       <header>
         <h1>News digest</h1>
         <button onClick={() => void refetch()} disabled={isFetching}>
-          {isFetching ? "Running…" : "Refresh"}
+          {isFetching ? "Loading…" : "Reload"}
         </button>
       </header>
 
-      {isPending && <p className="muted">Running the flow…</p>}
-      {error && <p className="error">Could not build the digest: {error.message}</p>}
+      {isPending && <p className="muted">Loading…</p>}
+      {error && <p className="error">Could not load the digest: {error.message}</p>}
+
+      {data === null && (
+        <p className="muted">
+          No run has finished yet. One starts when the app launches; reload in a moment.
+        </p>
+      )}
 
       {data && (
         <>
           <p className="muted">
             Flow: {data.digest.flow} · {data.articleCount} articles in ·{" "}
             {data.usedSamples ? "sample articles (no feeds.json)" : "live feeds"} ·
-            updated {new Date(dataUpdatedAt).toLocaleTimeString()}
+            ran {new Date(data.ranAt).toLocaleString()}
           </p>
           {data.failures.map(({ feedUrl, reason }) => (
             <p key={feedUrl} className="error">
