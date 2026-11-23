@@ -48,3 +48,11 @@ export interface Flow {
   name: string;
   run(input: FlowInput): Promise<Digest>;
 }
+
+/** A digest item once it is in the stored feed, where it stays across runs. */
+export const FeedItemSchema = DigestItemSchema.extend({
+  topic: z.string(),
+  /** When the run that first delivered this item finished. */
+  addedAt: z.iso.datetime(),
+});
+export type FeedItem = z.infer<typeof FeedItemSchema>;

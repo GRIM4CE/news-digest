@@ -1,7 +1,8 @@
-import { runAndSave, RUN_FILE } from "./store.ts";
+import { FEED_FILE, runAndSave } from "./store.ts";
 
-/** Forces a run now, whatever the schedule says, and stores it for the web view. */
-const { digest, articleCount, failures, usedSamples } = await runAndSave();
+/** Forces a run now, whatever the schedule says, and adds the result to the stored feed. */
+const { run, feed, added } = await runAndSave();
+const { digest, articleCount, failures, usedSamples } = run;
 
 for (const { feedUrl, reason } of failures) {
   console.error(`Skipped ${feedUrl}: ${reason}`);
@@ -22,4 +23,4 @@ for (const { topic, items } of digest.sections) {
   }
   console.log();
 }
-console.error(`Saved to ${RUN_FILE}`);
+console.error(`Added ${added} new items to ${FEED_FILE} (${feed.items.length} in total)`);

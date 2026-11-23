@@ -1,4 +1,4 @@
-import { loadRun, runAndSave } from "./store.ts";
+import { loadFeed, runAndSave } from "./store.ts";
 
 const DAY_MS = 24 * 60 * 60_000;
 /** Local time on the machine running the app. */
@@ -19,8 +19,8 @@ export function msUntilHour(hour: number, now: Date): number {
 
 async function runQuietly(why: string): Promise<void> {
   try {
-    const run = await runAndSave();
-    console.log(`[digest] ${why}: ${run.articleCount} articles in`);
+    const { run, added } = await runAndSave();
+    console.log(`[digest] ${why}: ${run.articleCount} articles in, ${added} added to the feed`);
   } catch (error) {
     console.error(`[digest] ${why} failed:`, error);
   }
@@ -35,6 +35,6 @@ function scheduleNext(): void {
 /** Called once when the server starts: catch up if overdue, then run daily. */
 export async function startSchedule(): Promise<void> {
   scheduleNext();
-  const last = await loadRun().catch(() => undefined);
-  if (isDue(last?.ranAt, new Date())) await runQuietly("catch-up run");
+  const feed = await loadFeed().catch(() => undefined);
+  if (isDue(feed?.lastRun?.ranAt, new Date())) await runQuietly("catch-up run");
 }
