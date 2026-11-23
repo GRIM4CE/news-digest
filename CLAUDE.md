@@ -19,8 +19,13 @@ or commit messages:
   interest profile and feed list belong in a gitignored file.
 - Write docs in neutral project terms, not first person about the user.
 
-Before every commit, scan the staged diff (`git diff --cached`) for the above
-and fix anything found before committing.
+Before every commit, run `npm run leakscan` (scans staged files) and read the
+staged diff (`git diff --cached`) for the above. Fix anything found before
+committing. The scan catches patterns; circumstances and interests it cannot
+recognise are still on the author. Never use `git commit --no-verify`.
+
+Take extra care with fixtures, test data, logs, and snapshots: write them from
+scratch with placeholder values, never copied from real feeds or real output.
 
 ## Permissions and sandbox
 
