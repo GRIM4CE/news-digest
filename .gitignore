@@ -6,6 +6,7 @@ next-env.d.ts
 .env*
 *.sqlite
 /feeds.json
+/data
 .claude/settings.local.json
 
 # Private words the leak scan looks for (names, usernames, places)

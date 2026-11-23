@@ -1,7 +1,7 @@
 # news-digest: project notes
 
 Reference for what this project is, how it is being built, and what has been
-found so far. Last updated 2026-11-23, after chunk 4.
+found so far. Last updated 2026-11-23, after chunk 5.
 
 ## What we are building
 
@@ -60,7 +60,7 @@ Commands:
 |---|---|
 | `npm run dev` | Start the web view at `http://localhost:3000` |
 | `npm run build` | Production build of the web view |
-| `npm run digest` | Run the flow and print the digest. Uses the feeds in `feeds.json` when that file exists, otherwise the sample input |
+| `npm run digest` | Force a run now: fetch, run the flow, store the result for the web view, and print it. Uses the feeds in `feeds.json` when that file exists, otherwise the sample input |
 | `npm run check` | Typecheck, lint, and tests |
 | `npm run typecheck` / `lint` / `test` | Each check on its own |
 | `npm run leakscan` | Scan staged files for secrets and personal details. `-- --all` scans every tracked file |
@@ -181,9 +181,34 @@ Decisions made in chunk 4:
 - **One package, Next.js at the repo root** with its routes under `src/app`,
   so the page imports the flow code directly. `next build` rewrote parts of
   `tsconfig.json` (JSX, DOM types, its own type folders).
-- **Caching is in the browser only.** Reloading within 15 minutes reuses the
-  last digest; Refresh re-runs the flow. Nothing is cached on the server.
+- **Caching is in the browser only**, through TanStack Query. (Chunk 5 changed
+  what is cached: the stored run, not a fresh run per request.)
 - **No tests for the page.** It only displays what `buildDigest()` returns.
+
+## Chunk 5: scheduled runs, read-only web view
+
+The web view no longer fetches or runs anything on request. It shows the
+latest stored run, and runs happen on a schedule.
+
+| File | Purpose |
+|---|---|
+| `src/store.ts` | `loadRun` / `saveRun` for the latest run in `data/latest-run.json` (gitignored), and `runAndSave` |
+| `src/schedule.ts` | Runs the flow at 06:00 local time each day, and once at server start when the last run is more than 24 hours old or missing |
+| `src/instrumentation.ts` | Next.js startup hook that starts the schedule |
+| `src/app/api/digest/route.ts` | Now read-only: returns the stored run, or `null` before the first run |
+| `tests/schedule.test.ts`, `tests/store.test.ts` | Due check, time until 06:00, and a save/load round trip |
+
+Decisions made in chunk 5:
+
+- **The schedule lives inside the web server**, as a timer, with no OS cron
+  entry and no new dependency. If the server is not running at 06:00 the run
+  is missed, and the check at the next launch catches up.
+- **Forcing a run is `npm run digest`.** There is no button or endpoint for
+  it; the page cannot trigger a run.
+- **One stored run, in a JSON file.** Each run replaces the last. History can
+  move to SQLite together with the dedupe step.
+- **A run where feeds failed is still stored**, with the failures listed, and
+  counts as the run for that day.
 
 ## Environment findings
 

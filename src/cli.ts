@@ -1,6 +1,7 @@
-import { buildDigest } from "./digest.ts";
+import { runAndSave, RUN_FILE } from "./store.ts";
 
-const { digest, articleCount, failures, usedSamples } = await buildDigest();
+/** Forces a run now, whatever the schedule says, and stores it for the web view. */
+const { digest, articleCount, failures, usedSamples } = await runAndSave();
 
 for (const { feedUrl, reason } of failures) {
   console.error(`Skipped ${feedUrl}: ${reason}`);
@@ -21,3 +22,4 @@ for (const { topic, items } of digest.sections) {
   }
   console.log();
 }
+console.error(`Saved to ${RUN_FILE}`);
