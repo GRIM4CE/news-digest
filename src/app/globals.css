@@ -1,0 +1,31 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+body { margin: 0; }
+main { max-width: 44rem; margin: 0 auto; padding: 2rem 1rem; }
+header { display: flex; justify-content: space-between; align-items: center; }
+h1 { margin: 0; font-size: 1.5rem; }
+h2 { margin: 2rem 0 0.5rem; font-size: 1.1rem; text-transform: capitalize; }
+button { font: inherit; padding: 0.3rem 0.9rem; cursor: pointer; }
+article {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+}
+article p { margin: 0.2rem 0 0; }
+a { font-weight: 600; }
+.score {
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.muted { opacity: 0.65; font-size: 0.9rem; }
+.error { color: #c0392b; }
